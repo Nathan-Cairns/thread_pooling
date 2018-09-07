@@ -1,0 +1,10 @@
+Q. Explain how your implementation dispatches tasks from the dispatch queues. You must
+describe how dispatching is done for both serial and concurrent dispatch queues. Give code
+snippets from your solution as part of the explanation.
+
+A.
+
+Q. Using the time command, time running test4 and test5. Give the results and discuss them. Is
+there anything unusual? Explain what you observe. 
+
+A.
