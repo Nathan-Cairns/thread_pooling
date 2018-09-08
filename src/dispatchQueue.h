@@ -26,6 +26,7 @@
         void (*work)(void *);       // the function to perform
         void *params;               // parameters to pass to the function
         task_dispatch_type_t type;  // asynchronous or synchronous
+        task* next_job;             // Pointer to the next job
     } task_t;
     
     typedef struct dispatch_queue_t dispatch_queue_t; // the dispatch queue type
@@ -38,9 +39,18 @@
         task_t *task;           // the current task for this tread
     };
 
-    struct dispatch_queue_t {
+    typedef struct thread {
+        int id;                         // Id the thread
+        pthread_t pthread;              // pointer to phthread
+        dispatch_queue_t* queue;        // pointer to the owning dispatch queue
+    } thread;
+
+    typedef struct dispatch_queue_t {
         queue_type_t queue_type;            // the type of queue - serial or concurrent
+        thread** threads;                   // Pointer to threads associated with this queue
+        int max_threads;                    // max number of threads allowed for this queue
     };
+
     
     task_t *task_create(void (*)(void *), void *, char*);
     

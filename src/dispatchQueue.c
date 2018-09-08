@@ -1,4 +1,13 @@
 #include <stdio.h>
+#include <sys/sysinfo.h>
+#include <pthread.h>
+#include <stdlib.h>
+
+#include "dispatchQueue.h"
+
+void* thread_do(struct thread* t) {
+    return NULL;
+}
 
 /* Creates a dispatch queue, probably setting up any associated threads and a linked list to be used by
  * the added tasks. The queueType is either CONCURRENT or SERIAL.
@@ -9,8 +18,55 @@
  * dispatch_queue_t *queue;
  * queue = dispatch_queue_create(CONCURRENT); */
 dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
-	
+    dispatch_queue_t* dp;
+    int num_threads;
+
+    dp = (struct dispatch_queue_t*)malloc(sizeof(struct dispatch_queue_t));
+    if (dp == NULL) {
+        // Could not allocate enough memory!
+        return NULL;
+    }
+
+    // Construct queue attributes depending on type
+    switch(queueType) {
+        case CONCURRENT: 
+            num_threads = get_nprocs_conf();
+            break;
+        case SERIAL: 
+            num_threads = 1;
+            break;
+        default: break;
+    }
+
+    dp -> max_threads = num_threads;
+    dp -> threads = (struct thread**)malloc(num_threads * sizeof(struct thread *));
+
+    if (dp -> threads == NULL) {
+        // could not allocate memory
+        return NULL;
+    }
+
+    int n;
+    for (n = 0; n < num_threads; n++) {
+        thread** t = &dp -> threads[n];
+        *t = (struct thread*)malloc(sizeof(struct thread));
+
+        if (t == NULL) {
+            // Could not allocate enough memory
+            return NULL;
+        }
+
+        (*t) -> queue = dp;
+        (*t) -> id = n;
+
+        pthread_create(&(*t) -> pthread, NULL, (void*)thread_do, (*t));
+        pthread_detatch((*t) -> pthread);
+    }
+
+    return dp;
 }
+
+
 
 /* Destroys the dispatch queue queue. All allocated memory and resources such as semaphores are
  * released and returned.
