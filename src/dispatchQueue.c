@@ -5,8 +5,31 @@
 
 #include "dispatchQueue.h"
 
-void* thread_do(struct thread* t) {
-    return NULL;
+void pool_push(thread_pool_t *tp, dispatch_queue_thread_t *thread) {
+    if (tp -> size < tp -> size_max) {
+        tp -> threads[tp -> size++] = thread;
+    } else {
+        fprintf(stderr, "Error: stack full\n");
+    }
+}
+
+dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
+    if (tp -> size < 1) {
+        fprintf(stderr, "Error: stack empty\n");
+    } else {
+        tp -> size--;
+    }
+}
+
+void thread_pool_init(thread_pool_t *tp, int max_size) {
+    tp -> size_max = max_size;
+    tp -> size = 0;
+    tp -> threads = malloc(max_size); 
+
+    int i;
+    for (i = 0; i < max_size; i++) {
+        tp -> threads[i] = malloc(sizeof(struct dispatch_queue_thread_t));
+    } 
 }
 
 /* Creates a dispatch queue, probably setting up any associated threads and a linked list to be used by
@@ -38,30 +61,10 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
         default: break;
     }
 
-    dp -> max_threads = num_threads;
-    dp -> threads = (struct thread**)malloc(num_threads * sizeof(struct thread *));
+    thread_pool_t *tp;
+    thread_pool_init(tp, num_threads);
 
-    if (dp -> threads == NULL) {
-        // could not allocate memory
-        return NULL;
-    }
-
-    int n;
-    for (n = 0; n < num_threads; n++) {
-        thread** t = &dp -> threads[n];
-        *t = (struct thread*)malloc(sizeof(struct thread));
-
-        if (t == NULL) {
-            // Could not allocate enough memory
-            return NULL;
-        }
-
-        (*t) -> queue = dp;
-        (*t) -> id = n;
-
-        pthread_create(&(*t) -> pthread, NULL, (void*)thread_do, (*t));
-        pthread_detatch((*t) -> pthread);
-    }
+    dp -> thread_pool = tp;
 
     return dp;
 }
@@ -76,7 +79,7 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
  * …
  * dispatch_queue_destroy(queue); */
 void dispatch_queue_destroy(dispatch_queue_t *queue) {
-	
+    // TODO
 }
 
 /* Creates a task. work is the function to be called when the task is executed, param is a pointer to

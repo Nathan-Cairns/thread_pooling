@@ -10,7 +10,8 @@
 
 #include <pthread.h>
 #include <semaphore.h>
-    
+#include <sys/sysinfo.h>
+
 #define error_exit(MESSAGE)     perror(MESSAGE), exit(EXIT_FAILURE)
 
     typedef enum { // whether dispatching a task synchronously or asynchronously
@@ -39,18 +40,16 @@
         task_t *task;           // the current task for this tread
     };
 
-    typedef struct thread {
-        int id;                         // Id the thread
-        pthread_t pthread;              // pointer to phthread
-        dispatch_queue_t* queue;        // pointer to the owning dispatch queue
-    } thread;
+    typedef struct thread_pool_t {
+        int size; // how many threads in pool
+        int size_max;
+        dispatch_queue_thread_t **threads;
+    } thread_pool_t;
 
     typedef struct dispatch_queue_t {
         queue_type_t queue_type;            // the type of queue - serial or concurrent
-        thread** threads;                   // Pointer to threads associated with this queue
-        int max_threads;                    // max number of threads allowed for this queue
-    };
-
+        thread_pool_t *thread_pool;         // pointer to the thread_pool
+    } dispatch_queue_t;
     
     task_t *task_create(void (*)(void *), void *, char*);
     
