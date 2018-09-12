@@ -22,12 +22,12 @@
         CONCURRENT, SERIAL
     } queue_type_t;
 
-    typedef struct task {
+    typedef struct task_t {
         char name[64];              // to identify it when debugging
         void (*work)(void *);       // the function to perform
         void *params;               // parameters to pass to the function
         task_dispatch_type_t type;  // asynchronous or synchronous
-        task* next_job;             // Pointer to the next job
+        task_t* next_job;             // Pointer to the next job
     } task_t;
     
     typedef struct dispatch_queue_t dispatch_queue_t; // the dispatch queue type

@@ -98,7 +98,14 @@ void dispatch_queue_destroy(dispatch_queue_t *queue) {
  * task_t *task;
  * task = task_create(do_something, (void *)42, “do_something”); */
 task_t *task_create(void (* work)(void *), void *param, char* name) {
-	
+    task_t *task;
+
+    task -> name = name;
+    task -> work = work;
+    task -> params = param;
+    task -> next_job; // TODO
+
+    return task;
 }
 
 /* Destroys the task. Call this function as soon as a task has completed. All memory allocated to the
@@ -109,7 +116,7 @@ task_t *task_create(void (* work)(void *), void *param, char* name) {
  * …
  * task_destroy(task); */
 void task_destroy(task_t *task) {
-	
+	// TODO
 }
 
 /* Sends the task to the queue (which could be either CONCURRENT or SERIAL). This function does
@@ -120,8 +127,9 @@ void task_destroy(task_t *task) {
  * task_t *task;
  * …
  * dispatch_sync(queue, task);*/
-void dispatch_sync(dispatch_queue_t *queue, task_t *task) {
-	
+int dispatch_sync(dispatch_queue_t *queue, task_t *task) {
+    task -> type = SYNC;
+    // TODO
 }
 
 /* Sends the task to the queue (which could be either CONCURRENT or SERIAL). This function
@@ -132,8 +140,9 @@ void dispatch_sync(dispatch_queue_t *queue, task_t *task) {
  * task_t *task;
  * …
  * dispatch_async(queue, task);*/
-void dispatch_async(dispatch_queue_t *queue, task_t *task) {
-	
+int dispatch_async(dispatch_queue_t *queue, task_t *task) {
+    task -> type = ASYNC;
+    //TODO
 }
 
 /* Waits (blocks) until all tasks on the queue have completed. If new tasks are added to the queue
@@ -143,8 +152,8 @@ void dispatch_async(dispatch_queue_t *queue, task_t *task) {
  * dispatch_queue_t *queue;
  * …
  * dispatch_queue_wait(queue); */
-void dispatch_queue_wait(dispatch_queue_t *queue) {
-	
+int dispatch_queue_wait(dispatch_queue_t *queue) {
+    //TODO
 }
 
 /* Executes the work function number of times (in parallel if the queue is CONCURRENT). Each
@@ -164,5 +173,5 @@ void dispatch_queue_wait(dispatch_queue_t *queue) {
  * do_loop(i);
  * Except the do_loop calls can be done in parallel.*/
 void dispatch_for(dispatch_queue_t *queue, long number, void (*work)(long)) {
-	
+    //TODO
 }
