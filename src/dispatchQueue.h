@@ -23,7 +23,7 @@
     } queue_type_t;
 
     typedef struct task_t {
-        char name[64];              // to identify it when debugging
+        char *name;              // to identify it when debugging
         void (*work)(void *);       // the function to perform
         void *params;               // parameters to pass to the function
         task_dispatch_type_t type;  // asynchronous or synchronous

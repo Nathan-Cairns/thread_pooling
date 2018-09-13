@@ -2,6 +2,7 @@
 #include <sys/sysinfo.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <semaphore.h>
 
 #include "dispatchQueue.h"
 
@@ -42,12 +43,17 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
         tp -> threads[i] = malloc(sizeof(struct dispatch_queue_thread_t));
         dispatch_queue_thread_t *new_thread;
 
-        pthread_t *thread;
-        pthread_create(&thread, NULL, (void *)thread_start, &something);
+        // Init the pthread
+        pthread_t thread;
+        pthread_create(&thread, NULL, (void *)thread_start, queue);
+
+        sem_t semaphore;
+
+        sem_init(&semaphore, 0, 0);
 
         new_thread -> queue = queue;
-        new_thread -> thread = //TODO create phthread;
-        new_thread -> semaphores = //TODO create semaphores;
+        new_thread -> thread = thread;
+        new_thread -> thread_semaphore = semaphore;
         pool_push(tp, new_thread);
     } 
 }
