@@ -27,7 +27,7 @@
         void (*work)(void *);       // the function to perform
         void *params;               // parameters to pass to the function
         task_dispatch_type_t type;  // asynchronous or synchronous
-        task_t* next_job;             // Pointer to the next job
+        struct task_t* next_job;             // Pointer to the next job
     } task_t;
     
     typedef struct dispatch_queue_t dispatch_queue_t; // the dispatch queue type
@@ -49,6 +49,8 @@
     typedef struct dispatch_queue_t {
         queue_type_t queue_type;            // the type of queue - serial or concurrent
         thread_pool_t *thread_pool;         // pointer to the thread_pool
+        task_t *head;
+        task_t *tail;
     } dispatch_queue_t;
     
     task_t *task_create(void (*)(void *), void *, char*);

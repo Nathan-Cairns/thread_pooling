@@ -5,6 +5,8 @@
 
 #include "dispatchQueue.h"
 
+/*
+ * Push a thread to the top of the thread pool stack */
 void pool_push(thread_pool_t *tp, dispatch_queue_thread_t *thread) {
     if (tp -> size < tp -> size_max) {
         tp -> threads[tp -> size++] = thread;
@@ -13,6 +15,8 @@ void pool_push(thread_pool_t *tp, dispatch_queue_thread_t *thread) {
     }
 }
 
+/*
+ * Pop a thread from the top of the stack */
 dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
     if (tp -> size < 1) {
         fprintf(stderr, "Error: stack empty\n");
@@ -21,14 +25,30 @@ dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
     }
 }
 
-void thread_pool_init(thread_pool_t *tp, int max_size) {
+void thread_start(dispatch_queue_thread_t* dp_thread) {
+    
+}
+
+/*
+ * Initialise the thread pool stack */
+void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) {
     tp -> size_max = max_size;
     tp -> size = 0;
     tp -> threads = malloc(max_size); 
 
     int i;
     for (i = 0; i < max_size; i++) {
+        // Create and push thread to pool
         tp -> threads[i] = malloc(sizeof(struct dispatch_queue_thread_t));
+        dispatch_queue_thread_t *new_thread;
+
+        pthread_t *thread;
+        pthread_create(&thread, NULL, (void *)thread_start, &something);
+
+        new_thread -> queue = queue;
+        new_thread -> thread = //TODO create phthread;
+        new_thread -> semaphores = //TODO create semaphores;
+        pool_push(tp, new_thread);
     } 
 }
 
@@ -62,9 +82,11 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
     }
 
     thread_pool_t *tp;
-    thread_pool_init(tp, num_threads);
+    thread_pool_init(tp, num_threads, dp);
 
     dp -> thread_pool = tp;
+    dp -> head = NULL;
+    dp -> tail = NULL;
 
     return dp;
 }
@@ -100,10 +122,9 @@ void dispatch_queue_destroy(dispatch_queue_t *queue) {
 task_t *task_create(void (* work)(void *), void *param, char* name) {
     task_t *task;
 
-    task -> name = name;
+    task -> name = name; // TODO figure out why this explodes
     task -> work = work;
     task -> params = param;
-    task -> next_job; // TODO
 
     return task;
 }
@@ -128,7 +149,21 @@ void task_destroy(task_t *task) {
  * …
  * dispatch_sync(queue, task);*/
 int dispatch_sync(dispatch_queue_t *queue, task_t *task) {
+    // Set type of task synchronous
     task -> type = SYNC;
+
+    if (queue -> head == NULL) {
+        // If queue is empty set head to be new task
+        queue -> head = task;
+    } else {
+        // Set the next job of the last task in the queue to this task
+        task_t *tail = queue -> tail;
+        tail -> next_job = task;
+    }
+
+    // Set this task to be last in queue
+    queue -> tail = task;
+
     // TODO
 }
 
