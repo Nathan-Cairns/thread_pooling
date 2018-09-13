@@ -26,8 +26,10 @@ dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
     }
 }
 
-void thread_start(dispatch_queue_thread_t* dp_thread) {
-    
+void thread_start(dispatch_queue_t *queue) {
+    while(1) {
+        sem_wait(queue -> thread_semaphore);
+    }
 }
 
 /*
@@ -47,13 +49,8 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
         pthread_t thread;
         pthread_create(&thread, NULL, (void *)thread_start, queue);
 
-        sem_t semaphore;
-
-        sem_init(&semaphore, 0, 0);
-
-        new_thread -> queue = queue;
+                new_thread -> queue = queue;
         new_thread -> thread = thread;
-        new_thread -> thread_semaphore = semaphore;
         pool_push(tp, new_thread);
     } 
 }
@@ -90,6 +87,10 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
     thread_pool_t *tp;
     thread_pool_init(tp, num_threads, dp);
 
+    sem_t *semaphore;
+    sem_init(semaphore, 0, 0);
+
+    dp -> thread_semaphore = semaphore;
     dp -> thread_pool = tp;
     dp -> head = NULL;
     dp -> tail = NULL;
