@@ -46,11 +46,12 @@
     } thread_pool_t;
 
     typedef struct dispatch_queue_t {
-        queue_type_t queue_type;            // the type of queue - serial or concurrent
-        sem_t *thread_semaphore; // the semaphore the thread waits on until a task is allocated
-        thread_pool_t *thread_pool;         // pointer to the thread_pool
-        task_t *head;
-        task_t *tail;
+        queue_type_t queue_type;                // the type of queue - serial or concurrent
+        sem_t *thread_semaphore;                // the semaphore the thread waits on until a task is allocated
+        thread_pool_t *thread_pool;             // pointer to the thread_pool
+        task_t *head;                           // pointer to head of queue
+        task_t *tail;                           // pointer to end of queue
+        int length;                             // Length of the queue
     } dispatch_queue_t;
     
     task_t *task_create(void (*)(void *), void *, char*);
