@@ -228,6 +228,7 @@ task_t *task_create(void (* work)(void *), void *param, char* name) {
  * …
  * task_destroy(task); */
 void task_destroy(task_t *task) {
+    free(task -> name);
     free(task);
 }
 
