@@ -34,7 +34,6 @@
     typedef struct dispatch_queue_thread_t dispatch_queue_thread_t; // the dispatch queue thread type
 
     struct dispatch_queue_thread_t {
-        dispatch_queue_t *queue;// the queue this thread is associated with
         pthread_t thread;       // the thread which runs the task
         task_t *task;           // the current task for this tread
     };

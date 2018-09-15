@@ -76,6 +76,7 @@ void thread_destroy(dispatch_queue_thread_t *thread) {
 /*
  * Push a thread to the top of the thread pool stack */
 void pool_push(thread_pool_t *tp, dispatch_queue_thread_t *thread) {
+    printf("Pushing thread to stack\n");
     if (tp -> size < tp -> size_max) {
         tp -> threads[tp -> size++] = thread;
     } else {
@@ -86,6 +87,7 @@ void pool_push(thread_pool_t *tp, dispatch_queue_thread_t *thread) {
 /*
  * Pop a thread from the top of the stack */
 dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
+    printf("Popping thread from stack\n");
     if (tp -> size < 1) {
         fprintf(stderr, "Error: stack empty\n");
     } else {
@@ -97,23 +99,24 @@ dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
 /*
  * Initialise the thread pool stack */
 void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) {
+    printf("Initialising thread pool\n");
+
     tp -> size_max = max_size;
     tp -> size = 0;
-    tp -> threads = malloc(max_size); 
+    tp -> threads = malloc(max_size * sizeof(struct dispatch_queue_thread_t)); 
 
+    printf("Creating %i threads\n", max_size);
     int i;
     for (i = 0; i < max_size; i++) {
         // Create and push thread to pool
-        tp -> threads[i] = malloc(sizeof(struct dispatch_queue_thread_t));
-        dispatch_queue_thread_t *new_thread;
+        tp -> threads[i] = malloc(sizeof(dispatch_queue_thread_t));
 
         // Init the pthread
         pthread_t thread;
         pthread_create(&thread, NULL, (void *)thread_start, queue);
 
-                new_thread -> queue = queue;
-        new_thread -> thread = thread;
-        pool_push(tp, new_thread);
+        tp -> threads[i] -> thread = thread;
+        pool_push(tp, tp -> threads[i]);
     } 
 }
 
@@ -139,12 +142,13 @@ void thread_pool_destroy(thread_pool_t *tp) {
  * dispatch_queue_t *queue;
  * queue = dispatch_queue_create(CONCURRENT); */
 dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
+    printf("Creating dispatch queue\n");
+
     dispatch_queue_t* dp;
     int num_threads;
-
     dp = (struct dispatch_queue_t*)malloc(sizeof(struct dispatch_queue_t));
     if (dp == NULL) {
-        // Could not allocate enough memory!
+        fprintf(stderr, "Error: Could not allocate enough memory to create queue.");
         return NULL;
     }
 
@@ -159,10 +163,12 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
         default: break;
     }
 
-    thread_pool_t *tp;
+    printf("Set number of threads to: %d\n", num_threads);
+
+    thread_pool_t *tp = malloc(sizeof(struct thread_pool_t));
     thread_pool_init(tp, num_threads, dp);
 
-    sem_t *semaphore;
+    sem_t *semaphore = malloc(sizeof(sem_t));
     sem_init(semaphore, 0, 0);
 
     dp -> thread_semaphore = semaphore;
@@ -211,7 +217,7 @@ void dispatch_queue_destroy(dispatch_queue_t *queue) {
  * task_t *task;
  * task = task_create(do_something, (void *)42, “do_something”); */
 task_t *task_create(void (* work)(void *), void *param, char* name) {
-    task_t *task;
+    task_t *task = malloc(sizeof(task_t));
 
     task -> name = name;
     task -> work = work;
