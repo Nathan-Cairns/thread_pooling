@@ -103,21 +103,32 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
 
     tp -> size_max = max_size;
     tp -> size = 0;
-    tp -> threads = malloc(max_size * sizeof(struct dispatch_queue_thread_t)); 
+    tp -> threads = (struct dispatch_queue_thread_t**) malloc(max_size * sizeof(struct dispatch_queue_thread_t)); 
+    if (tp -> threads == NULL) {
+        fprintf(stderr, "Error could not assign enough memory to create thread stack");
+    }
 
     printf("Creating %i threads\n", max_size);
     int i;
     for (i = 0; i < max_size; i++) {
         // Create and push thread to pool
-        tp -> threads[i] = malloc(sizeof(dispatch_queue_thread_t));
+        tp -> threads[i] = (struct dispatch_queue_thread_t*) malloc(sizeof(struct dispatch_queue_thread_t));
+        if (tp -> threads[i] == NULL) {
+            fprintf(stderr, "Error: Could not allocate enough memory to create thread\n");
+        }
+
+        pool_push(tp, tp -> threads[i]);
 
         // Init the pthread
         pthread_t thread;
-        pthread_create(&thread, NULL, (void *)thread_start, queue);
+        int err = pthread_create(&thread, NULL, (void *)thread_start, queue);
+        if (err != 0) {
+            fprintf(stderr, "Error: could not create pthread\n");
+        }
+        err = pthread_detach(thread);
 
         tp -> threads[i] -> thread = thread;
-        pool_push(tp, tp -> threads[i]);
-    } 
+    }
 }
 
 /*
@@ -154,7 +165,7 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
 
     // Construct queue attributes depending on type
     switch(queueType) {
-        case CONCURRENT: 
+        case CONCURRENT:
             num_threads = get_nprocs_conf();
             break;
         case SERIAL: 
@@ -165,10 +176,13 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
 
     printf("Set number of threads to: %d\n", num_threads);
 
-    thread_pool_t *tp = malloc(sizeof(struct thread_pool_t));
+    thread_pool_t *tp = (thread_pool_t*) malloc(sizeof(struct thread_pool_t));
     thread_pool_init(tp, num_threads, dp);
 
-    sem_t *semaphore = malloc(sizeof(sem_t));
+    sem_t *semaphore = (sem_t*) malloc(sizeof(sem_t));
+    if(semaphore == NULL) {
+        fprintf(stderr, "Error: Could not allocate enough memory to create semaphore");
+    }
     sem_init(semaphore, 0, 0);
 
     dp -> thread_semaphore = semaphore;
