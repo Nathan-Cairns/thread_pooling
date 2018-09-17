@@ -6,11 +6,21 @@
 
 #include "dispatchQueue.h"
 
+#define DEBUG 1
+
+#if defined(DEBUG) && DEBUG > 0
+#define DEBUG_PRINTLN(fmt, args...) \
+    printf("DEBUG: " fmt, ##args )
+#else
+#define DEBUG_PRINTLN(fmt, args...) //Do Nothing
+#endif
+
 /*=== DISPATCH QUEUE ===*/
 
 /*
  * Add task to the end of the queue */
 void dispatch_queue_enqueue(dispatch_queue_t *queue, task_t *task) {
+    DEBUG_PRINTLN("Adding task to list\n");
     if (queue -> length == 0) {
         // If queue is empty set head and tail to be new task
         queue -> head = task;
@@ -28,6 +38,7 @@ void dispatch_queue_enqueue(dispatch_queue_t *queue, task_t *task) {
 /* 
  * Retrieve task from the front of the queue */
 task_t *dispatch_queue_dequeue(dispatch_queue_t *queue) {
+    DEBUG_PRINTLN("Getting task from list\n");
     task_t *task = queue -> head;
     if (queue -> length > 1) {
         queue -> head = task -> next_job;
@@ -46,7 +57,7 @@ task_t *dispatch_queue_dequeue(dispatch_queue_t *queue) {
 /*
  * Start a thread running and wait for tasks from semaphore */
 void thread_start(dispatch_queue_thread_t *thread) {
-    printf("Starting thread\n");
+    DEBUG_PRINTLN("Starting thread\n");
 
     /* Mark thread as alive (initialized) */
     pthread_mutex_lock(thread -> thread_pool ->thcount_lock);
@@ -56,15 +67,16 @@ void thread_start(dispatch_queue_thread_t *thread) {
     // Endless loop which keeps the thread alive
     while(1) {
         // Blocks until recieves go ahead from semaphore
-        printf("Thread waiting\n");
-        printf("sem: %p\n", thread -> thread_semaphore);
+        DEBUG_PRINTLN("Thread waiting\n");
+        DEBUG_PRINTLN("sem: %p\n", thread -> thread_semaphore);
         sem_wait(thread -> thread_semaphore);
-        printf("Thread executing task\n");
+        DEBUG_PRINTLN("Thread executing task\n");
 
         // Retrieve task from dispatch queue and do it in this thread
+        
         task_t *task = dispatch_queue_dequeue(thread -> queue);
         if (task) {
-            void (*work)(void *);
+            void (*work)(void *) = task -> work;
             work(task -> params);
             task_destroy(task);
         }
@@ -83,7 +95,7 @@ void thread_destroy(dispatch_queue_thread_t *thread) {
 /*
  * Push a thread to the top of the thread pool stack */
 void pool_push(thread_pool_t *tp, dispatch_queue_thread_t *thread) {
-    printf("Pushing thread to stack\n");
+    DEBUG_PRINTLN("Pushing thread to stack\n");
     if (tp -> size < tp -> size_max) {
         tp -> threads[tp -> size++] = thread;
     } else {
@@ -94,7 +106,7 @@ void pool_push(thread_pool_t *tp, dispatch_queue_thread_t *thread) {
 /*
  * Pop a thread from the top of the stack */
 dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
-    printf("Popping thread from stack\n");
+    DEBUG_PRINTLN("Popping thread from stack\n");
     if (tp -> size < 1) {
         fprintf(stderr, "Error: stack empty\n");
         return NULL;
@@ -107,7 +119,7 @@ dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
 /*
  * Initialise the thread pool stack */
 void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) {
-    printf("Initialising thread pool\n");
+    DEBUG_PRINTLN("Initialising thread pool\n");
 
     // Init counters and such
     tp -> size_max = max_size;
@@ -126,7 +138,7 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
     }
 
     // Create threads
-    printf("Creating %i threads\n", max_size);
+    DEBUG_PRINTLN("Creating %i threads\n", max_size);
     int i;
     for (i = 0; i < max_size; i++) {
         dispatch_queue_thread_t *newThread = malloc(sizeof(*newThread)); 
@@ -164,7 +176,7 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
 
     // Wait for threads to initialise
     while(tp -> threads_alive != max_size) {}
-    printf("Thread Pool initialised\n");
+    DEBUG_PRINTLN("Thread Pool initialised\n");
 }
 
 /*
@@ -189,7 +201,7 @@ void thread_pool_destroy(thread_pool_t *tp) {
  * dispatch_queue_t *queue;
  * queue = dispatch_queue_create(CONCURRENT); */
 dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
-    printf("Creating dispatch queue\n");
+    DEBUG_PRINTLN("Creating dispatch queue\n");
 
     dispatch_queue_t* dp;
     int num_threads;
@@ -210,7 +222,7 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
         default: break;
     }
 
-    printf("Set number of threads to: %d\n", num_threads);
+    DEBUG_PRINTLN("Set number of threads to: %d\n", num_threads);
 
     thread_pool_t *tp = (thread_pool_t*) malloc(sizeof(struct thread_pool_t));
     thread_pool_init(tp, num_threads, dp);
@@ -259,7 +271,7 @@ void dispatch_queue_destroy(dispatch_queue_t *queue) {
  * task_t *task;
  * task = task_create(do_something, (void *)42, “do_something”); */
 task_t *task_create(void (* work)(void *), void *param, char* name) {
-    printf("Creating task: \"%s\"\n", name);
+    DEBUG_PRINTLN("Creating task: \"%s\"\n", name);
     task_t *task = malloc(sizeof(task_t));
     if (task == NULL) {
         fprintf(stderr, "Error: failed to allocate memory for creating task.");
@@ -293,17 +305,17 @@ void task_destroy(task_t *task) {
  * …
  * dispatch_sync(queue, task);*/
 int dispatch_sync(dispatch_queue_t *queue, task_t *task) {
-    printf("Synchronously dispatching task to the queue\n");
+    DEBUG_PRINTLN("Synchronously dispatching task to the queue\n");
     // Set type of task synchronous
     task -> type = SYNC;
 
     dispatch_queue_enqueue(queue, task);
     dispatch_queue_thread_t *thread = pool_pop(queue -> thread_pool);
 
-    printf("sem2: %p\n", thread -> thread_semaphore);
+    DEBUG_PRINTLN("sem2: %p\n", thread -> thread_semaphore);
     sem_post(thread -> thread_semaphore);
 
-    while(1){}
+    while(1) {}
 }
 
 /* Sends the task to the queue (which could be either CONCURRENT or SERIAL). This function
