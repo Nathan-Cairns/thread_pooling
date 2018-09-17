@@ -6,7 +6,7 @@
 
 #include "dispatchQueue.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if defined(DEBUG) && DEBUG > 0
 #define DEBUG_PRINTLN(fmt, args...) \
@@ -65,7 +65,7 @@ void thread_start(dispatch_queue_thread_t *thread) {
     pthread_mutex_unlock(thread -> thread_pool ->thcount_lock);
 
     // Endless loop which keeps the thread alive
-    while(1) {
+    while(thread -> thread_pool -> keep_threads_alive) {
         // Blocks until recieves go ahead from semaphore
         DEBUG_PRINTLN("Thread waiting\n");
         DEBUG_PRINTLN("sem: %p\n", thread -> thread_semaphore);
@@ -73,12 +73,15 @@ void thread_start(dispatch_queue_thread_t *thread) {
         DEBUG_PRINTLN("Thread executing task\n");
 
         // Retrieve task from dispatch queue and do it in this thread
-        
         task_t *task = dispatch_queue_dequeue(thread -> queue);
         if (task) {
             void (*work)(void *) = task -> work;
             work(task -> params);
             task_destroy(task);
+
+            if (task -> type == SYNC) {
+                sem_post(thread -> queue -> queue_semaphore);
+            }
         }
     }
 }
@@ -86,7 +89,7 @@ void thread_start(dispatch_queue_thread_t *thread) {
 /*
  * Destroys a dispatch queue thread object and all resources associated with it */
 void thread_destroy(dispatch_queue_thread_t *thread) {
-    free(thread -> task);
+    sem_destroy(thread -> thread_semaphore);
     free(thread);
 }
 
@@ -125,6 +128,7 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
     tp -> size_max = max_size;
     tp -> size = 0;
     tp -> threads_alive = 0;
+    tp -> keep_threads_alive = 1;
     
     // Init muxtex
     tp -> thcount_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
@@ -182,12 +186,15 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
 /*
  * Destroy the thread pool and all resources associated with it */
 void thread_pool_destroy(thread_pool_t *tp) {
+    pthread_mutex_lock(tp -> thcount_lock);
+    tp -> keep_threads_alive = 0;
+    pthread_mutex_unlock(tp -> thcount_lock);
     int i;
     for (i = 0; i < tp -> size; i++) {
         thread_destroy(tp -> threads[i]);
     }
 
-    free(tp);
+   free(tp);
 }
 
 /*=== ASSIGNMENT FUNCTIONS ===*/
@@ -203,9 +210,9 @@ void thread_pool_destroy(thread_pool_t *tp) {
 dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
     DEBUG_PRINTLN("Creating dispatch queue\n");
 
-    dispatch_queue_t* dp;
     int num_threads;
-    dp = (struct dispatch_queue_t*)malloc(sizeof(struct dispatch_queue_t));
+    dispatch_queue_t* dp = (struct dispatch_queue_t*)malloc(sizeof(struct dispatch_queue_t));
+
     if (dp == NULL) {
         fprintf(stderr, "Error: Could not allocate enough memory to create queue.");
         return NULL;
@@ -221,8 +228,18 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
             break;
         default: break;
     }
-
     DEBUG_PRINTLN("Set number of threads to: %d\n", num_threads);
+
+    // Init queue semaphore
+    sem_t *semaphore = malloc(sizeof(*semaphore));
+    if (semaphore == NULL) {
+        fprintf(stderr, "Error: could not allocate enough memory to create semaphore.");
+    }
+    int err = sem_init(semaphore, 0, 0);
+    if (err != 0) {
+        fprintf(stderr, "Error: failed to initialise semaphore");
+    }
+    dp -> queue_semaphore = semaphore;
 
     thread_pool_t *tp = (thread_pool_t*) malloc(sizeof(struct thread_pool_t));
     thread_pool_init(tp, num_threads, dp);
@@ -292,7 +309,6 @@ task_t *task_create(void (* work)(void *), void *param, char* name) {
  * …
  * task_destroy(task); */
 void task_destroy(task_t *task) {
-    free(task -> name);
     free(task);
 }
 
@@ -309,13 +325,18 @@ int dispatch_sync(dispatch_queue_t *queue, task_t *task) {
     // Set type of task synchronous
     task -> type = SYNC;
 
+    // Put task on queue
     dispatch_queue_enqueue(queue, task);
-    dispatch_queue_thread_t *thread = pool_pop(queue -> thread_pool);
 
-    DEBUG_PRINTLN("sem2: %p\n", thread -> thread_semaphore);
+    // Get a free thread and make it do work
+    dispatch_queue_thread_t *thread = pool_pop(queue -> thread_pool);
+    DEBUG_PRINTLN("Posting semaphore\n");
     sem_post(thread -> thread_semaphore);
 
-    while(1) {}
+    // Wait until task is done and then add thread back to stack
+    DEBUG_PRINTLN("Waiting calling thread\n");
+    sem_wait(queue -> queue_semaphore);
+    pool_push(queue -> thread_pool, thread);
 }
 
 /* Sends the task to the queue (which could be either CONCURRENT or SERIAL). This function

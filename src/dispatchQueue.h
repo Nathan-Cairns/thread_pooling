@@ -46,6 +46,7 @@
         int size_max;
         dispatch_queue_thread_t **threads;
         volatile int threads_alive;
+        volatile int keep_threads_alive;
         pthread_mutex_t *thcount_lock;
     } thread_pool_t;
 
@@ -56,6 +57,7 @@
         task_t *head;                           // pointer to head of queue
         task_t *tail;                           // pointer to end of queue
         int length;                             // Length of the queue
+        sem_t *queue_semaphore;
     } dispatch_queue_t;
     
     task_t *task_create(void (*)(void *), void *, char*);
