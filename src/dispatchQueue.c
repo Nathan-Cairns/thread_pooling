@@ -6,7 +6,7 @@
 
 #include "dispatchQueue.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if defined(DEBUG) && DEBUG > 0
 #define DEBUG_PRINTLN(fmt, args...) \
@@ -354,7 +354,6 @@ int dispatch_sync(dispatch_queue_t *queue, task_t *task) {
     
     // If thread stack is empty wait for a free thread
     if (queue -> thread_pool -> size < 1) {
-        int *val = malloc(sizeof(*val));
         DEBUG_PRINTLN("Stack empty waiting for available thread\n");
         sem_wait(queue -> thread_pool -> stack_semaphore);
     }
@@ -367,7 +366,6 @@ int dispatch_sync(dispatch_queue_t *queue, task_t *task) {
     // Wait until task is done and then add thread back to stack
     DEBUG_PRINTLN("Waiting calling thread\n");
     sem_wait(queue -> queue_semaphore);
-    pool_push(queue -> thread_pool, thread);
 }
 
 /* Sends the task to the queue (which could be either CONCURRENT or SERIAL). This function
@@ -388,7 +386,6 @@ int dispatch_async(dispatch_queue_t *queue, task_t *task) {
 
     // If thread stack is empty wait for a free thread
     if (queue -> thread_pool -> size < 1) {
-        int *val = malloc(sizeof(*val));
         DEBUG_PRINTLN("Stack empty waiting for available thread\n");
         sem_wait(queue -> thread_pool -> stack_semaphore);
     }
