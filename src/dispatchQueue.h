@@ -35,19 +35,23 @@
 
     struct dispatch_queue_thread_t {
         pthread_t *thread;               // the thread which runs the task
-        sem_t *thread_semaphore;        // the semaphore the thread waits on until a task is allocated
         task_t *task;                   // the current task for this tread
         dispatch_queue_t *queue;        // queue
+        sem_t *thread_semaphore;        // the semaphore the thread waits on until a task is allocated
+        struct thread_pool_t *thread_pool;
     };
 
     typedef struct thread_pool_t {
         int size; // how many threads in pool
         int size_max;
         dispatch_queue_thread_t **threads;
+        volatile int threads_alive;
+        pthread_mutex_t *thcount_lock;
     } thread_pool_t;
 
     typedef struct dispatch_queue_t {
         queue_type_t queue_type;                // the type of queue - serial or concurrent
+        task_t *task;                   // the current task for this tread
         thread_pool_t *thread_pool;             // pointer to the thread_pool
         task_t *head;                           // pointer to head of queue
         task_t *tail;                           // pointer to end of queue
