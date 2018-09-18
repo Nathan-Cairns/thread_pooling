@@ -73,37 +73,37 @@ dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
         fprintf(stderr, "Error: stack empty\n");
         return NULL;
     } else {
-       tp -> size--;
-       if (tp -> size == 0) {
-          DEBUG_PRINTLN("Stack is now empty signal calling thread should wait\n");
-          sem_init(tp -> stack_semaphore, 0, 0);
-       }
-       return tp -> threads[tp -> size];
+        tp -> size--;
+        if (tp -> size == 0) {
+            DEBUG_PRINTLN("Stack is now empty signal calling thread should wait\n");
+            sem_init(tp -> stack_semaphore, 0, 0);
+        }
+        return tp -> threads[tp -> size];
     }
 }
 
 /* Executes work in a thread
  * keeps executing work until no more tasks in queue */
 void thread_do_work(dispatch_queue_thread_t *thread) {
-         // Retrieve task from dispatch queue
-        pthread_mutex_lock(thread -> queue -> queue_lock);
-        task_t *task = dispatch_queue_dequeue(thread -> queue);
-        pthread_mutex_unlock(thread -> queue -> queue_lock);
+    // Retrieve task from dispatch queue
+    pthread_mutex_lock(thread -> queue -> queue_lock);
+    task_t *task = dispatch_queue_dequeue(thread -> queue);
+    pthread_mutex_unlock(thread -> queue -> queue_lock);
 
-        // Do the actual work
-        if (task) {
-            void (*work)(void *) = task -> work;
-            work(task -> params);
-            task_destroy(task);
+    // Do the actual work
+    if (task) {
+        void (*work)(void *) = task -> work;
+        work(task -> params);
+        task_destroy(task);
 
-            if (task -> type == SYNC) {
-                sem_post(thread -> queue -> queue_semaphore);
-            }
+        if (task -> type == SYNC) {
+            sem_post(thread -> queue -> queue_semaphore);
         }
+    }
 
-        if (thread -> queue -> length > 0) {
-           thread_do_work(thread);
-        }
+    if (thread -> queue -> length > 0) {
+        thread_do_work(thread);
+    }
 }
 
 /* Start a thread running and wait for tasks from semaphore */
@@ -128,14 +128,14 @@ void thread_start(dispatch_queue_thread_t *thread) {
         thread -> thread_pool -> threads_working++;
         pthread_mutex_unlock(thread -> thread_pool -> thcount_lock);
 
-         thread_do_work(thread);
+        thread_do_work(thread);
 
         // Finished executing task return this thread to the threadpool
         pthread_mutex_lock(thread -> thread_pool -> thcount_lock);
         thread -> thread_pool -> threads_working--;
         pool_push(thread -> thread_pool, thread);
         pthread_mutex_unlock(thread -> thread_pool -> thcount_lock);
-   }
+    }
 }
 
 /* Destroys a dispatch queue thread object and all resources associated with it */
@@ -146,36 +146,36 @@ void thread_destroy(dispatch_queue_thread_t *thread) {
 
 /* Initialises a thread and puts it in the corresponding thread pool */
 void init_thread(thread_pool_t *tp, dispatch_queue_t *queue) {
-     dispatch_queue_thread_t *newThread = malloc(sizeof(*newThread)); 
+    dispatch_queue_thread_t *newThread = malloc(sizeof(*newThread));
 
-        // init fields
-        newThread -> thread_pool = tp;
-        newThread -> queue = queue;
+    // init fields
+    newThread -> thread_pool = tp;
+    newThread -> queue = queue;
 
-        // init semaphore
-        sem_t *semaphore = malloc(sizeof(*semaphore));
-        if (semaphore == NULL) {
-            fprintf(stderr, "Error: could not allocate enough memory for semaphore\n");
-            return;
-        }
-        int sem_err = sem_init(semaphore, 0, 0);
-        if (sem_err != 0) {
-            fprintf(stderr, "Error failed to initialise semaphor\n");
-            return;
-        }
-        newThread -> thread_semaphore = semaphore;
+    // init semaphore
+    sem_t *semaphore = malloc(sizeof(*semaphore));
+    if (semaphore == NULL) {
+        fprintf(stderr, "Error: could not allocate enough memory for semaphore\n");
+        return;
+    }
+    int sem_err = sem_init(semaphore, 0, 0);
+    if (sem_err != 0) {
+        fprintf(stderr, "Error failed to initialise semaphor\n");
+        return;
+    }
+    newThread -> thread_semaphore = semaphore;
 
-        // Init the pthread
-        pthread_t *thread = malloc(sizeof(*thread));
-        int err = pthread_create(thread, NULL, (void *)thread_start, newThread);
-        if (err != 0) {
-            fprintf(stderr, "Error: could not create pthread\n");
-            return;
-        }
-        newThread -> thread = thread;
+    // Init the pthread
+    pthread_t *thread = malloc(sizeof(*thread));
+    int err = pthread_create(thread, NULL, (void *)thread_start, newThread);
+    if (err != 0) {
+        fprintf(stderr, "Error: could not create pthread\n");
+        return;
+    }
+    newThread -> thread = thread;
 
-        // Push newly created thread to stack
-        pool_push(tp, newThread);
+    // Push newly created thread to stack
+    pool_push(tp, newThread);
 }
 
 /* Initialise the thread pool stack */
@@ -188,7 +188,7 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
     tp -> threads_alive = 0;
     tp -> threads_working = 0;
     tp -> keep_threads_alive = 1;
-    
+
     // Init mutex
     tp -> thcount_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(tp -> thcount_lock, NULL);
@@ -207,7 +207,7 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
     tp -> stack_semaphore = stack_sem;
 
     // init thread array
-    tp -> threads = (struct dispatch_queue_thread_t**) malloc(max_size * sizeof(struct dispatch_queue_thread_t)); 
+    tp -> threads = (struct dispatch_queue_thread_t**) malloc(max_size * sizeof(struct dispatch_queue_thread_t));
     if (tp -> threads == NULL) {
         fprintf(stderr, "Error could not assign enough memory to create thread stack\n");
         return;
@@ -217,7 +217,7 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
     DEBUG_PRINTLN("Creating %i threads\n", max_size);
     int i;
     for (i = 0; i < max_size; i++) {
-       init_thread(tp, queue);
+        init_thread(tp, queue);
     }
 
     // Wait for threads to initialise
@@ -237,7 +237,7 @@ void thread_pool_destroy(thread_pool_t *tp) {
         thread_destroy(tp -> threads[i]);
     }
 
-   free(tp);
+    free(tp);
 }
 
 /*=== ASSIGNMENT FUNCTIONS ===*/
@@ -263,13 +263,14 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
 
     // Construct queue attributes depending on type
     switch(queueType) {
-        case CONCURRENT:
-            num_threads = get_nprocs_conf();
-            break;
-        case SERIAL: 
-            num_threads = 1;
-            break;
-        default: break;
+    case CONCURRENT:
+        num_threads = get_nprocs_conf();
+        break;
+    case SERIAL:
+        num_threads = 1;
+        break;
+    default:
+        break;
     }
     DEBUG_PRINTLN("Set number of threads to: %d\n", num_threads);
 
@@ -380,7 +381,7 @@ int dispatch_sync(dispatch_queue_t *queue, task_t *task) {
 
     // Put task on queue
     dispatch_queue_enqueue(queue, task);
-    
+
     // If thread stack is empty wait for a free thread
     if (queue -> thread_pool -> size < 1) {
         DEBUG_PRINTLN("Stack empty waiting for available thread\n");
@@ -458,26 +459,26 @@ int dispatch_queue_wait(dispatch_queue_t *queue) {
  * do_loop(i);
  * Except the do_loop calls can be done in parallel.*/
 void dispatch_for(dispatch_queue_t *queue, long number, void (*work)(long)) {
-   DEBUG_PRINTLN("Executing dispatch for %ld times\n", number);
+    DEBUG_PRINTLN("Executing dispatch for %ld times\n", number);
 
-   // Dispatch "number" amount of "work" to the "queue"
-   long i;
-   for (i = 0; i < number; i++) {
-      // allocate memory for task stuff
-      task_t *task = malloc(sizeof(*task));
-      char *name = (char*)malloc(sizeof(20 * sizeof(char)));
+    // Dispatch "number" amount of "work" to the "queue"
+    long i;
+    for (i = 0; i < number; i++) {
+        // allocate memory for task stuff
+        task_t *task = malloc(sizeof(*task));
+        char *name = (char*)malloc(sizeof(20 * sizeof(char)));
 
-      // Create the task
-      sprintf(name, "task%ld", i);
-      task = task_create((void(*)(void *))work, (void *)i, name);
+        // Create the task
+        sprintf(name, "task%ld", i);
+        task = task_create((void(*)(void *))work, (void *)i, name);
 
-      // Dispatch task to queue
-      if (queue -> queue_type == CONCURRENT) {
-         dispatch_async(queue, task); // Do in parallel
-      } else if (queue -> queue_type == SERIAL) {
-         dispatch_sync(queue, task); // Only one thread might as well do Synchronously
-      }
-   }
+        // Dispatch task to queue
+        if (queue -> queue_type == CONCURRENT) {
+            dispatch_async(queue, task); // Do in parallel
+        } else if (queue -> queue_type == SERIAL) {
+            dispatch_sync(queue, task); // Only one thread might as well do Synchronously
+        }
+    }
 
-   dispatch_queue_wait(queue);
+    dispatch_queue_wait(queue);
 }
