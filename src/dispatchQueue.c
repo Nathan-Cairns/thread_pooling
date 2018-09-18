@@ -17,8 +17,7 @@
 
 /*=== DISPATCH QUEUE ===*/
 
-/*
- * Add task to the end of the queue */
+/* Add task to the end of the queue */
 void dispatch_queue_enqueue(dispatch_queue_t *queue, task_t *task) {
     DEBUG_PRINTLN("Adding task to list\n");
     if (queue -> length == 0) {
@@ -34,8 +33,7 @@ void dispatch_queue_enqueue(dispatch_queue_t *queue, task_t *task) {
     queue -> length++;
 }
 
-/* 
- * Retrieve task from the front of the queue */
+/* Retrieve task from the front of the queue */
 task_t *dispatch_queue_dequeue(dispatch_queue_t *queue) {
     DEBUG_PRINTLN("Getting task from list\n");
     task_t *task = queue -> head;
@@ -53,8 +51,7 @@ task_t *dispatch_queue_dequeue(dispatch_queue_t *queue) {
 
 /*=== THREADS ===*/
 
-/*
- * Push a thread to the top of the thread pool stack */
+/* Push a thread to the top of the thread pool stack */
 void pool_push(thread_pool_t *tp, dispatch_queue_thread_t *thread) {
     DEBUG_PRINTLN("Pushing thread to stack\n");
     if (tp -> size < tp -> size_max) {
@@ -68,8 +65,7 @@ void pool_push(thread_pool_t *tp, dispatch_queue_thread_t *thread) {
     }
 }
 
-/*
- * Pop a thread from the top of the stack */
+/* Pop a thread from the top of the stack */
 dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
     DEBUG_PRINTLN("Popping thread from stack\n");
     if (tp -> size < 1) {
@@ -84,8 +80,7 @@ dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
        return tp -> threads[tp -> size];
     }
 }
-/*
- * Start a thread running and wait for tasks from semaphore */
+/* Start a thread running and wait for tasks from semaphore */
 void thread_start(dispatch_queue_thread_t *thread) {
     DEBUG_PRINTLN("Starting thread\n");
 
@@ -127,15 +122,13 @@ void thread_start(dispatch_queue_thread_t *thread) {
     }
 }
 
-/*
- * Destroys a dispatch queue thread object and all resources associated with it */
+/* Destroys a dispatch queue thread object and all resources associated with it */
 void thread_destroy(dispatch_queue_thread_t *thread) {
     sem_destroy(thread -> thread_semaphore);
     free(thread);
 }
 
-/*
- * Initialise the thread pool stack */
+/* Initialise the thread pool stack */
 void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) {
     DEBUG_PRINTLN("Initialising thread pool\n");
 
@@ -211,8 +204,7 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
     DEBUG_PRINTLN("Thread Pool initialised\n");
 }
 
-/*
- * Destroy the thread pool and all resources associated with it */
+/* Destroy the thread pool and all resources associated with it */
 void thread_pool_destroy(thread_pool_t *tp) {
     pthread_mutex_lock(tp -> thcount_lock);
     tp -> keep_threads_alive = 0;
