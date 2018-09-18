@@ -7,7 +7,7 @@
 
 #include "dispatchQueue.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if defined(DEBUG) && DEBUG > 0
 #define DEBUG_PRINTLN(fmt, args...) \
@@ -75,7 +75,7 @@ dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
     } else {
        tp -> size--;
        if (tp -> size == 0) {
-          DEBUG_PRINTLN("Stack is now empty signal calling thread should wait");
+          DEBUG_PRINTLN("Stack is now empty signal calling thread should wait\n");
           sem_init(tp -> stack_semaphore, 0, 0);
        }
        return tp -> threads[tp -> size];
@@ -425,7 +425,7 @@ int dispatch_queue_wait(dispatch_queue_t *queue) {
  * do_loop(i);
  * Except the do_loop calls can be done in parallel.*/
 void dispatch_for(dispatch_queue_t *queue, long number, void (*work)(long)) {
-   DEBUG_PRINTLN("Executing dispatch for\n");
+   DEBUG_PRINTLN("Executing dispatch for %ld times\n", number);
    long i;
    for (i = 0; i < number; i++) {
       // allocate memory for task stuff
@@ -437,6 +437,12 @@ void dispatch_for(dispatch_queue_t *queue, long number, void (*work)(long)) {
       task = task_create((void(*)(void *))work, (void *)i, name);
 
       // Dispatch task to queue
-      
+      if (queue -> queue_type == CONCURRENT) {
+         dispatch_async(queue, task);
+      } else if (queue -> queue_type == SERIAL) {
+         dispatch_sync(queue, task);
+      }
    }
+
+   dispatch_queue_wait(queue);
 }
