@@ -3,10 +3,11 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <semaphore.h>
+#include <string.h>
 
 #include "dispatchQueue.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 #if defined(DEBUG) && DEBUG > 0
 #define DEBUG_PRINTLN(fmt, args...) \
@@ -424,5 +425,18 @@ int dispatch_queue_wait(dispatch_queue_t *queue) {
  * do_loop(i);
  * Except the do_loop calls can be done in parallel.*/
 void dispatch_for(dispatch_queue_t *queue, long number, void (*work)(long)) {
-    //TODO
+   DEBUG_PRINTLN("Executing dispatch for\n");
+   long i;
+   for (i = 0; i < number; i++) {
+      // allocate memory for task stuff
+      task_t *task = malloc(sizeof(*task));
+      char *name = (char*)malloc(sizeof(20 * sizeof(char)));
+
+      // Create the task
+      sprintf(name, "task%ld", i);
+      task = task_create((void(*)(void *))work, (void *)i, name);
+
+      // Dispatch task to queue
+      
+   }
 }
