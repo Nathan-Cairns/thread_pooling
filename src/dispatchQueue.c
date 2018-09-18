@@ -82,6 +82,30 @@ dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
     }
 }
 
+/* Executes work in a thread
+ * keeps executing work until no more tasks in queue */
+void thread_do_work(dispatch_queue_thread_t *thread) {
+         // Retrieve task from dispatch queue
+        pthread_mutex_lock(thread -> queue -> queue_lock);
+        task_t *task = dispatch_queue_dequeue(thread -> queue);
+        pthread_mutex_unlock(thread -> queue -> queue_lock);
+
+        // Do the actual work
+        if (task) {
+            void (*work)(void *) = task -> work;
+            work(task -> params);
+            task_destroy(task);
+
+            if (task -> type == SYNC) {
+                sem_post(thread -> queue -> queue_semaphore);
+            }
+        }
+
+        if (thread -> queue -> length > 0) {
+           thread_do_work(thread);
+        }
+}
+
 /* Start a thread running and wait for tasks from semaphore */
 void thread_start(dispatch_queue_thread_t *thread) {
     DEBUG_PRINTLN("Starting thread\n");
@@ -104,21 +128,7 @@ void thread_start(dispatch_queue_thread_t *thread) {
         thread -> thread_pool -> threads_working++;
         pthread_mutex_unlock(thread -> thread_pool -> thcount_lock);
 
-        // Retrieve task from dispatch queue
-        pthread_mutex_lock(thread -> queue -> queue_lock);
-        task_t *task = dispatch_queue_dequeue(thread -> queue);
-        pthread_mutex_unlock(thread -> queue -> queue_lock);
-
-        // Do the actual work
-        if (task) {
-            void (*work)(void *) = task -> work;
-            work(task -> params);
-            task_destroy(task);
-
-            if (task -> type == SYNC) {
-                sem_post(thread -> queue -> queue_semaphore);
-            }
-        }
+         thread_do_work(thread);
 
         // Finished executing task return this thread to the threadpool
         pthread_mutex_lock(thread -> thread_pool -> thcount_lock);
