@@ -76,8 +76,12 @@ dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
         fprintf(stderr, "Error: stack empty\n");
         return NULL;
     } else {
-        tp -> size--;
-        return tp -> threads[tp -> size];
+       tp -> size--;
+       if (tp -> size == 0) {
+          DEBUG_PRINTLN("Stack is now empty signal calling thread should wait");
+          sem_init(tp -> stack_semaphore, 0, 0);
+       }
+       return tp -> threads[tp -> size];
     }
 }
 /*
