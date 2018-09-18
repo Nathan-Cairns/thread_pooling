@@ -60,6 +60,7 @@
         task_t *tail;                           // pointer to end of queue
         int length;                             // Length of the queue
         sem_t *queue_semaphore;
+        pthread_mutex_t *queue_lock;
     } dispatch_queue_t;
     
     task_t *task_create(void (*)(void *), void *, char*);
