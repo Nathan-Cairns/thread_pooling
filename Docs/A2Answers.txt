@@ -10,12 +10,13 @@ When threads are working they continue working until they cannot retrieve anymor
 queue (at which point they are returned to the stack).
 If there are no tasks they wait until they are signalled (using a semaphore) that there are
 more tasks in the queue (at which point they are popped from the stack).
-This is popping/pushing and posting of semaphores is managed by the calling dispatch thread.
+This popping and posting of semaphores is managed by the calling dispatch thread pushing/returning
+a thread to the stack is managed by the thread doing work.
 
 Upon initialisation of the queue and the thread pool the number of threads which the thread pool
-will use is determined based on the queue type. If the queue type is concurrent the thread pool
+will use is determined based on the queue type. If the queue type is CONCURRENT the thread pool
 will have the same number of threads as there is cores on the current machine. If the queue type is
-serial the thread pool will have one thread. This is illustrated in the code snippet below.
+SERIAL the thread pool will have one thread. This is illustrated in the code snippet below.
 
     // Construct queue attributes depending on type
     switch(queueType) {
@@ -29,8 +30,8 @@ serial the thread pool will have one thread. This is illustrated in the code sni
         break;
     }
 
-Assigning threads like this means that tasks in a serial queue will only ever be executed in order
-and non-concurrently as there will only ever be one thread executing tasks. Conversely a concurrent
+Assigning threads like this means that tasks in a SERIAL queue will only ever be executed in order
+and non-concurrently as there will only ever be one thread executing tasks. Conversely a CONCURRENT
 queue will have access to multiple threads allowing it to dispatch tasks to be executed
 concurrently. This implementation means that tasks can be dispatched identically for SERIAL and
 CONCURRENT queues.
@@ -42,9 +43,9 @@ The task is added to the queue.
 If there is a free thread it is notified that there is work to be done.
 If there is no free thread either return (task will be executed in the future) or wait until task
 has completed (depends on the task type).
-In the case of a SERIAL queue the single thread will be notified to do work if it is not currently
+In the case of a SERIAL queue the single thread will be notified to do work if it is not currently,
 otherwise the task will just be added to the queue to be executed by the single worker thread in
-the future. If this task is ASYNC control will be returned to the calling thread immediately and
+the future. If this task is ASYNC, control will be returned to the calling thread immediately and
 the task will be executed in order sometime in the future.
 CONCURRENT queues work very similarly but with multiple threads and in order execution only being
 guaranteed on synchronous dispatching.
@@ -100,3 +101,21 @@ Q. Using the time command, time running test4 and test5. Give the results and di
 there anything unusual? Explain what you observe. 
 
 A.
+
+time ./test4
+	real	0m32.442s
+	user	1m51.876s
+	sys	0m0.124s
+
+time ./test5
+	real	0m23.034s
+	user	0m46.026s
+	sys	0m0.009s
+
+Test4 took longer to execute than test5.
+This is a somewhat unexpected result as the concurrent one would be expected to be quicker due to
+the tasks being executed in parallel.
+However, a concurrent queue wastes a lot of time waiting for access of shared volatile variables.
+Since a serial queue doesn't have to deal with this contention it will execute quicker in cases
+with small computational loads.
+Hence, test5 executes faster than test5.
