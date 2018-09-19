@@ -88,6 +88,7 @@ void thread_do_work(dispatch_queue_thread_t *thread) {
         work(task -> params);
         task_destroy(task);
 
+        // If task was synchronous inform calling thread it can continue
         if (task -> type == SYNC) {
             sem_post(thread -> queue -> queue_semaphore);
         }
