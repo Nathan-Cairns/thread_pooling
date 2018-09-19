@@ -49,7 +49,6 @@
         volatile int threads_working;
         volatile int keep_threads_alive;
         pthread_mutex_t *thcount_lock;
-        sem_t *stack_semaphore;
     } thread_pool_t;
 
     typedef struct dispatch_queue_t {

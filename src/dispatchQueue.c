@@ -132,7 +132,9 @@ void thread_start(dispatch_queue_thread_t *thread) {
 
 /* Destroys a dispatch queue thread object and all resources associated with it */
 void thread_destroy(dispatch_queue_thread_t *thread) {
+    DEBUG_PRINTLN("Destroying thread\n");
     sem_destroy(thread -> thread_semaphore);
+    free(thread -> thread);
     free(thread);
 }
 
@@ -208,14 +210,18 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
 
 /* Destroy the thread pool and all resources associated with it */
 void thread_pool_destroy(thread_pool_t *tp) {
+    DEBUG_PRINTLN("Destroying thread pool\n");
     pthread_mutex_lock(tp -> thcount_lock);
     tp -> keep_threads_alive = 0;
     pthread_mutex_unlock(tp -> thcount_lock);
+
     int i;
     for (i = 0; i < tp -> size; i++) {
         thread_destroy(tp -> threads[i]);
     }
 
+    free(tp -> thcount_lock);
+    free(tp -> threads);
     free(tp);
 }
 
@@ -289,6 +295,10 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
  * …
  * dispatch_queue_destroy(queue); */
 void dispatch_queue_destroy(dispatch_queue_t *queue) {
+    DEBUG_PRINTLN("Destroying dispatch queue\n");
+    sem_destroy(queue -> queue_semaphore);
+    free(queue -> queue_lock);
+
     // Free memory related to thread pool and thread semaphore
     thread_pool_destroy(queue -> thread_pool);
 
