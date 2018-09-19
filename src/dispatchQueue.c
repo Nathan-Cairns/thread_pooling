@@ -241,8 +241,8 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
 
     // Init pointers
     int num_threads;
-    dispatch_queue_t* dp = (struct dispatch_queue_t*)malloc(sizeof(struct dispatch_queue_t));
-    if (dp == NULL) {
+    dispatch_queue_t* queue = (struct dispatch_queue_t*)malloc(sizeof(struct dispatch_queue_t));
+    if (queue == NULL) {
         fprintf(stderr, "Error: Could not allocate enough memory to create queue.");
         return NULL;
     }
@@ -269,23 +269,23 @@ dispatch_queue_t *dispatch_queue_create(queue_type_t queueType) {
     if (err != 0) {
         fprintf(stderr, "Error: failed to initialise semaphore");
     }
-    dp -> queue_semaphore = semaphore;
+    queue -> queue_semaphore = semaphore;
 
     // Init queue mutex lock
-    dp -> queue_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
-    pthread_mutex_init(dp -> queue_lock, NULL);
+    queue -> queue_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
+    pthread_mutex_init(queue -> queue_lock, NULL);
 
     // Init thread pool
     thread_pool_t *tp = (thread_pool_t*) malloc(sizeof(struct thread_pool_t));
-    thread_pool_init(tp, num_threads, dp);
+    thread_pool_init(tp, num_threads, queue);
 
     // Init queue logic
-    dp -> thread_pool = tp;
-    dp -> head = NULL;
-    dp -> tail = NULL;
-    dp -> length = 0;
+    queue -> thread_pool = tp;
+    queue -> head = NULL;
+    queue -> tail = NULL;
+    queue -> length = 0;
 
-    return dp;
+    return queue;
 }
 
 /* Destroys the dispatch queue queue. All allocated memory and resources such as semaphores are
