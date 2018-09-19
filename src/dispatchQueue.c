@@ -7,7 +7,7 @@
 
 #include "dispatchQueue.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 #if defined(DEBUG) && DEBUG > 0
 #define DEBUG_PRINTLN(fmt, args...) \
@@ -315,7 +315,7 @@ void dispatch_queue_destroy(dispatch_queue_t *queue) {
 
     // Free memory related to each job in the queue
     while (queue -> length > 0) {
-        free(dispatch_queue_dequeue(queue));
+        task_destroy(dispatch_queue_dequeue(queue));
     }
 
     // free any remaining memory used by queue
@@ -362,6 +362,7 @@ task_t *task_create(void (* work)(void *), void *param, char* name) {
  * …
  * task_destroy(task); */
 void task_destroy(task_t *task) {
+    DEBUG_PRINTLN("Destroying task\n");
     free(task);
 }
 
