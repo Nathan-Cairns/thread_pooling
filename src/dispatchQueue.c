@@ -470,5 +470,6 @@ void dispatch_for(dispatch_queue_t *queue, long number, void (*work)(long)) {
         dispatch_async(queue, task); // Do in parallel
     }
 
+    // Wait for all tasks to finish
     dispatch_queue_wait(queue);
 }
