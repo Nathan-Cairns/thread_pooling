@@ -23,43 +23,43 @@
     } queue_type_t;
 
     typedef struct task {
-        char *name;              // to identify it when debugging
-        void (*work)(void *);       // the function to perform
-        void *params;               // parameters to pass to the function
-        task_dispatch_type_t type;  // asynchronous or synchronous
-        struct task* next_job;             // Pointer to the next job
+        char *name;                     // to identify it when debugging
+        void (*work)(void *);           // the function to perform
+        void *params;                   // parameters to pass to the function
+        task_dispatch_type_t type;      // asynchronous or synchronous
+        struct task* next_job;          // Pointer to the next job
     } task_t;
     
-    typedef struct dispatch_queue_t dispatch_queue_t; // the dispatch queue type
+    typedef struct dispatch_queue_t dispatch_queue_t;               // the dispatch queue type
     typedef struct dispatch_queue_thread_t dispatch_queue_thread_t; // the dispatch queue thread type
 
     struct dispatch_queue_thread_t {
-        pthread_t *thread;               // the thread which runs the task
-        task_t *task;                   // the current task for this tread
-        dispatch_queue_t *queue;        // queue
-        sem_t *thread_semaphore;        // the semaphore the thread waits on until a task is allocated
-        struct thread_pool_t *thread_pool;
+        pthread_t *thread;                      // the thread which runs the task
+        task_t *task;                           // the current task for this tread
+        dispatch_queue_t *queue;                // point to owning queue
+        sem_t *thread_semaphore;                // the semaphore the thread waits on until a task is allocated
+        struct thread_pool_t *thread_pool;      // pointer to owning thread pool
     };
 
     typedef struct thread_pool_t {
-        int size; // how many threads in pool
-        int size_max;
-        dispatch_queue_thread_t **threads;
-        volatile int threads_alive;
-        volatile int threads_working;
-        volatile int keep_threads_alive;
-        pthread_mutex_t *thcount_lock;
+        int size;                               // how many threads in pool
+        int size_max;                           // Max num of threaeds allowed in pool
+        dispatch_queue_thread_t **threads;      // Array of threads
+        volatile int threads_alive;             // number of threads alive
+        volatile int threads_working;           // number of threads working
+        volatile int keep_threads_alive;        // Whether threads should keep alive
+        pthread_mutex_t *thcount_lock;          // A mutex lock for accessing thread pool vars
     } thread_pool_t;
 
     typedef struct dispatch_queue_t {
         queue_type_t queue_type;                // the type of queue - serial or concurrent
-        task_t *task;                   // the current task for this tread
+        task_t *task;                           // the current task for this tread
         thread_pool_t *thread_pool;             // pointer to the thread_pool
         task_t *head;                           // pointer to head of queue
         task_t *tail;                           // pointer to end of queue
         int length;                             // Length of the queue
-        sem_t *queue_semaphore;
-        pthread_mutex_t *queue_lock;
+        sem_t *queue_semaphore;                 // Semaphore used for synchronous dispatching
+        pthread_mutex_t *queue_lock;            // Mutex lock used for accessing queue vars
     } dispatch_queue_t;
     
     task_t *task_create(void (*)(void *), void *, char*);

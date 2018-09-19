@@ -1,5 +1,6 @@
 # ignore submission dir
-A2/
+A2
+A2/*
 A2.*
 
 # Ignore all
