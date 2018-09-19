@@ -371,12 +371,16 @@ int dispatch_sync(dispatch_queue_t *queue, task_t *task) {
     task -> type = SYNC;
 
     // Put task on queue
+    pthread_mutex_lock(queue -> queue_lock);
     dispatch_queue_enqueue(queue, task);
+    pthread_mutex_unlock(queue -> queue_lock);
 
     // If there is a free thread assign it to do work
     if (queue -> thread_pool -> size > 0) {
         // Get a free thread and make it do work
+        pthread_mutex_lock(queue -> thread_pool -> thcount_lock);
         dispatch_queue_thread_t *thread = pool_pop(queue -> thread_pool);
+        pthread_mutex_unlock(queue -> thread_pool -> thcount_lock);
         DEBUG_PRINTLN("Posting semaphore\n");
         sem_post(thread -> thread_semaphore);
     }
@@ -401,7 +405,9 @@ int dispatch_async(dispatch_queue_t *queue, task_t *task) {
     task -> type = ASYNC;
 
     // Add task to queue
+    pthread_mutex_lock(queue -> queue_lock);
     dispatch_queue_enqueue(queue, task);
+    pthread_mutex_unlock(queue -> queue_lock);
 
     // If thread stack is empty return from function work will be done later
     if (queue -> thread_pool -> size < 1) {
@@ -409,7 +415,9 @@ int dispatch_async(dispatch_queue_t *queue, task_t *task) {
     }
 
     // There is a free thread in stack assign it to do work
+    pthread_mutex_lock(queue -> thread_pool -> thcount_lock);
     dispatch_queue_thread_t *thread = pool_pop(queue -> thread_pool);
+    pthread_mutex_unlock(queue -> thread_pool -> thcount_lock);
     DEBUG_PRINTLN("Posting semaphore\n");
     sem_post(thread -> thread_semaphore);
 }
