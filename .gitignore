@@ -1,3 +1,7 @@
+# ignore submission dir
+submission/
+submission.*
+
 # Ignore all
 *
 
