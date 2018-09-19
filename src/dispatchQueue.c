@@ -7,7 +7,7 @@
 
 #include "dispatchQueue.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 #if defined(DEBUG) && DEBUG > 0
 #define DEBUG_PRINTLN(fmt, args...) \
@@ -57,10 +57,6 @@ void pool_push(thread_pool_t *tp, dispatch_queue_thread_t *thread) {
     DEBUG_PRINTLN("Pushing thread to stack\n");
     if (tp -> size < tp -> size_max) {
         tp -> threads[tp -> size++] = thread;
-        if (tp -> size - 1 == 0) {
-            DEBUG_PRINTLN("Stack got new resources signaling they are available\n");
-            sem_post(tp -> stack_semaphore);
-        }
     } else {
         fprintf(stderr, "Error: stack full\n");
     }
@@ -74,10 +70,6 @@ dispatch_queue_thread_t *pool_pop(thread_pool_t *tp) {
         return NULL;
     } else {
         tp -> size--;
-        if (tp -> size == 0) {
-            DEBUG_PRINTLN("Stack is now empty signal calling thread should wait\n");
-            sem_init(tp -> stack_semaphore, 0, 0);
-        }
         return tp -> threads[tp -> size];
     }
 }
@@ -192,19 +184,6 @@ void thread_pool_init(thread_pool_t *tp, int max_size, dispatch_queue_t *queue) 
     // Init mutex
     tp -> thcount_lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
     pthread_mutex_init(tp -> thcount_lock, NULL);
-
-    // Init semaphore
-    sem_t *stack_sem = malloc(sizeof(*stack_sem));
-    if (stack_sem == NULL) {
-        fprintf(stderr, "Error: Could not allocate enough memory for semaphore");
-        return;
-    }
-    int stack_sem_err = sem_init(stack_sem, 0, 0);
-    if (stack_sem_err != 0) {
-        fprintf(stderr, "Error: failed to init semaphore.");
-        return;
-    }
-    tp -> stack_semaphore = stack_sem;
 
     // init thread array
     tp -> threads = (struct dispatch_queue_thread_t**) malloc(max_size * sizeof(struct dispatch_queue_thread_t));
@@ -383,16 +362,13 @@ int dispatch_sync(dispatch_queue_t *queue, task_t *task) {
     // Put task on queue
     dispatch_queue_enqueue(queue, task);
 
-    // If thread stack is empty wait for a free thread
-    if (queue -> thread_pool -> size < 1) {
-        DEBUG_PRINTLN("Stack empty waiting for available thread\n");
-        sem_wait(queue -> thread_pool -> stack_semaphore);
+    // If there is a free thread assign it to do work
+    if (queue -> thread_pool -> size > 0) {
+        // Get a free thread and make it do work
+        dispatch_queue_thread_t *thread = pool_pop(queue -> thread_pool);
+        DEBUG_PRINTLN("Posting semaphore\n");
+        sem_post(thread -> thread_semaphore);
     }
-
-    // Get a free thread and make it do work
-    dispatch_queue_thread_t *thread = pool_pop(queue -> thread_pool);
-    DEBUG_PRINTLN("Posting semaphore\n");
-    sem_post(thread -> thread_semaphore);
 
     // Wait until task is done and then add thread back to stack
     DEBUG_PRINTLN("Waiting calling thread\n");
@@ -416,13 +392,12 @@ int dispatch_async(dispatch_queue_t *queue, task_t *task) {
     // Add task to queue
     dispatch_queue_enqueue(queue, task);
 
-    // If thread stack is empty wait for a free thread
+    // If thread stack is empty return from function work will be done later
     if (queue -> thread_pool -> size < 1) {
-        DEBUG_PRINTLN("Stack empty waiting for available thread\n");
-        sem_wait(queue -> thread_pool -> stack_semaphore);
+        return 0;
     }
 
-    // Do the task in a thread from the stack
+    // There is a free thread in stack assign it to do work
     dispatch_queue_thread_t *thread = pool_pop(queue -> thread_pool);
     DEBUG_PRINTLN("Posting semaphore\n");
     sem_post(thread -> thread_semaphore);
