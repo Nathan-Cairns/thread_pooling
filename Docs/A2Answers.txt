@@ -3,6 +3,98 @@ describe how dispatching is done for both serial and concurrent dispatch queues.
 snippets from your solution as part of the explanation.
 
 A.
+My thread pool was implemented using a stack data structure.
+When threads are waiting for work they are pushed to the stack, when there is work they are popped
+from the stack.
+When threads are working they continue working until they cannot retrieve anymore tasks from the
+queue (at which point they are returned to the stack).
+If there are no tasks they wait until they are signalled (using a semaphore) that there are
+more tasks in the queue (at which point they are popped from the stack).
+This is popping/pushing and posting of semaphores is managed by the calling dispatch thread.
+
+Upon initialisation of the queue and the thread pool the number of threads which the thread pool
+will use is determined based on the queue type. If the queue type is concurrent the thread pool
+will have the same number of threads as there is cores on the current machine. If the queue type is
+serial the thread pool will have one thread. This is illustrated in the code snippet below.
+
+    // Construct queue attributes depending on type
+    switch(queueType) {
+    case CONCURRENT:
+        num_threads = get_nprocs_conf();
+        break;
+    case SERIAL:
+        num_threads = 1;
+        break;
+    default:
+        break;
+    }
+
+Assigning threads like this means that tasks in a serial queue will only ever be executed in order
+and non-concurrently as there will only ever be one thread executing tasks. Conversely a concurrent
+queue will have access to multiple threads allowing it to dispatch tasks to be executed
+concurrently. This implementation means that tasks can be dispatched identically for SERIAL and
+CONCURRENT queues.
+
+Tasks are dispatched as following...
+
+The type of the task is set.
+The task is added to the queue.
+If there is a free thread it is notified that there is work to be done.
+If there is no free thread either return (task will be executed in the future) or wait until task
+has completed (depends on the task type).
+In the case of a SERIAL queue the single thread will be notified to do work if it is not currently
+otherwise the task will just be added to the queue to be executed by the single worker thread in
+the future. If this task is ASYNC control will be returned to the calling thread immediately and
+the task will be executed in order sometime in the future.
+CONCURRENT queues work very similarly but with multiple threads and in order execution only being
+guaranteed on synchronous dispatching.
+See the code snippets below for reference.
+
+// Synchronously
+int dispatch_sync(dispatch_queue_t *queue, task_t *task) {
+    // Set type of task synchronous
+    task -> type = SYNC;
+
+    // Put task on queue
+    pthread_mutex_lock(queue -> queue_lock);
+    dispatch_queue_enqueue(queue, task);
+    pthread_mutex_unlock(queue -> queue_lock);
+
+    // If there is a free thread assign it to do work
+    if (queue -> thread_pool -> size > 0) {
+        // Get a free thread and make it do work
+        pthread_mutex_lock(queue -> thread_pool -> thcount_lock);
+        dispatch_queue_thread_t *thread = pool_pop(queue -> thread_pool);
+        pthread_mutex_unlock(queue -> thread_pool -> thcount_lock);
+        sem_post(thread -> thread_semaphore);
+    }
+
+    // Wait until task is done and then add thread back to stack
+    DEBUG_PRINTLN("Waiting calling thread\n");
+    sem_wait(queue -> queue_semaphore);
+}
+
+// Asynchronously
+int dispatch_async(dispatch_queue_t *queue, task_t *task) {
+    // Set task type to async
+    task -> type = ASYNC;
+
+    // Add task to queue
+    pthread_mutex_lock(queue -> queue_lock);
+    dispatch_queue_enqueue(queue, task);
+    pthread_mutex_unlock(queue -> queue_lock);
+
+    // If thread stack is empty return from function work will be done later
+    if (queue -> thread_pool -> size < 1) {
+        return 0;
+    }
+
+    // There is a free thread in stack assign it to do work
+    pthread_mutex_lock(queue -> thread_pool -> thcount_lock);
+    dispatch_queue_thread_t *thread = pool_pop(queue -> thread_pool);
+    pthread_mutex_unlock(queue -> thread_pool -> thcount_lock);
+    sem_post(thread -> thread_semaphore);
+}
 
 Q. Using the time command, time running test4 and test5. Give the results and discuss them. Is
 there anything unusual? Explain what you observe. 
