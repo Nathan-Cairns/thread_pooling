@@ -459,12 +459,7 @@ void dispatch_for(dispatch_queue_t *queue, long number, void (*work)(long)) {
         sprintf(name, "task%ld", i);
         task = task_create((void(*)(void *))work, (void *)i, name);
 
-        // Dispatch task to queue
-        if (queue -> queue_type == CONCURRENT) {
-            dispatch_async(queue, task); // Do in parallel
-        } else if (queue -> queue_type == SERIAL) {
-            dispatch_sync(queue, task); // Only one thread might as well do Synchronously
-        }
+        dispatch_async(queue, task); // Do in parallel
     }
 
     dispatch_queue_wait(queue);
